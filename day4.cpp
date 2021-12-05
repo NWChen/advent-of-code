@@ -114,12 +114,53 @@ int partOne(struct Input& input) {
     return -1;
 }
 
+int partTwo(struct Input& input) {
+    vector<map<int, pair<int, int>>> numToCoords;
+    vector<vector<vector<int>>> boards = input.boards;
+    vector<int> &numbers = input.numbers;
+
+    // TODO this is fucking nasty
+    vector<map<int, pair<int, int>>> tempNumToCoords;
+    vector<vector<vector<int>>> tempBoards;
+    for (auto board : boards) {
+        numToCoords.push_back(numToRowCol(board));
+    }
+
+    for (int num : numbers) {
+        for (int i=0; i < boards.size(); ++i) {
+            vector<vector<int>>& board = boards[i];
+
+            // assumes num is in each board
+            if (numToCoords[i].count(num)) {
+                pair<int, int> rowCol = numToCoords[i][num];
+                board[rowCol.first][rowCol.second] = MARKER;
+                if (isBingo(board, rowCol.first, rowCol.second)) {
+                    if (boards.size()==1) {
+                        return (num * score(board));
+                    }
+                    continue;
+                }
+            }
+            tempBoards.push_back(board);
+            tempNumToCoords.push_back(numToCoords[i]);
+        }
+        boards = tempBoards;
+        numToCoords = tempNumToCoords;
+        tempBoards.clear();
+        tempNumToCoords.clear();
+    } 
+    return -1;
+}
+
 int main(int argc, char **argv) {
 
     struct Input input = vread("input4.txt");
     int partOneAns = partOne(input);
     cout << partOneAns << endl;
 
+    input = vread("input4.txt");
+    int partTwoAns = partTwo(input);
+    cout << partTwoAns << endl;
     // numToCoords
   
     // vector<int> expected;
