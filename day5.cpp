@@ -8,7 +8,7 @@ using namespace std;
 // number of line overlaps
 int partOne(struct Input &input) {
     int numOverlaps = 0;
-    vector<vector<int>> grid(
+    vector<vector<int> > grid(
         input.y_max + 1, // increment because this is size, *_max is 0-indexed
         vector<int> (input.x_max + 1)
     );
@@ -45,7 +45,7 @@ int partOne(struct Input &input) {
 
 int partTwo(Input &input) {
     int numOverlaps = 0;
-    vector<vector<int>> grid(
+    vector<vector<int> > grid(
         input.y_max + 1,
         vector<int> (input.x_max + 1)
     );
@@ -54,10 +54,10 @@ int partTwo(Input &input) {
     for (pair<Point, Point> points : input.lines) {
         Point left = points.first;
         Point right = points.second;
-        int dx = right.x - left.x; //left.x - right.x;
+        int dx = right.x - left.x;
         if (dx != 0)
             dx /= abs(dx);
-        int dy = right.y - left.y; //left.y - right.y;
+        int dy = right.y - left.y;
         if (dy != 0)
             dy /= abs(dy);
         int _x = left.x, _y = left.y;
@@ -66,32 +66,32 @@ int partTwo(Input &input) {
         grid[_y][_x] += 1;
         if (grid[_y][_x] == 2)
             ++numOverlaps;
-        while (abs(_x) <= abs(right.x) && abs(_y) <= abs(right.y)) {
+
+        while (_x != right.x || _y != right.y) {
             _x += dx;
             _y += dy;
             grid[_y][_x] += 1;
             if (grid[_y][_x] == 2)
                 ++numOverlaps;
-            cout << _x << ", " << _y << " : " << left.x << "," << left.y << " - " << right.x << "," << right.y << endl;
         }
     }
+    // for (auto row : grid) {
+    //     for (auto num : row) {
+    //         cout << num << " ";
+    //     }
+    //     cout << endl;
+    // }
     return numOverlaps;
 }
 
 int main(int argc, char **argv) {
-    struct Input input = readInput("input5-1.txt");
+    struct Input input = readInput("input5.txt");
 
     int partOneAns = partOne(input);
     cout << partOneAns << endl;
 
     int partTwoAns = partTwo(input);
     cout << partTwoAns << endl;
-    // cout << input.lines.size() << endl;
-    // for (auto line : input.lines) {
-        // cout << line.first.x << ", " << line.first.y << " -> ";
-        // cout << line.second.x << ", " << line.second.y << endl;
-    // }
-    // cout << input.x_max << endl;
-    // cout << input.y_max << endl;
+    
     return 0;
 }
