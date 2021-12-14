@@ -37,7 +37,7 @@ shared_ptr<Input> read(const string &filename) {
         } else {
             int eqIndex = line.find('=');
             if (eqIndex != string::npos) {
-                string dim = line.substr(eqIndex-1, eqIndex);
+                string dim = line.substr(eqIndex-1, 1); // note the second param is length of substr, NOT end index!
                 string value = line.substr(eqIndex+1, line.length());
                 f.push_back({dim, stoi(value)});
             }
