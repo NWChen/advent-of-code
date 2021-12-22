@@ -43,13 +43,12 @@ vector<Point> adjs(vector<vector<int>> &grid, int &x, int &y) {
     const int n = grid[0].size();
     vector<Point> v;
 
-    for (int _x = x-1; _x <= x+1; ++_x) {
-        for (int _y = y-1; _y <= y+1; ++_y) {
-            if (_x == x && _y == y)
+    for (int row = x-1; row <= x+1; ++row) {
+        for (int col = y-1; col <= y+1; ++col) {
+            if (row == x && col == y)
                 continue;
-            if (_x >= 0 && _x < m && _y >= 0 && _y < n) {
-                // cout << x << "," << y << ": " << _x << "," << _y << endl;
-                v.push_back({_x, _y});
+            if (row >= 0 && row < m && col >= 0 && col < n) {
+                v.push_back({row, col});
             }
         }
     }
@@ -80,9 +79,6 @@ int bfsIncr(vector<vector<int>> &grid, int &i, int &j) {
 int step(vector<vector<int>> &grid) {
     int flashes = 0;
 
-    // pvv(grid);
-    // cout << endl;
-
     // first, energy level of each octopus increases by 1
     deque<Point> temp;
     for (int i=0; i < grid.size(); ++i) {
@@ -99,31 +95,6 @@ int step(vector<vector<int>> &grid) {
     // this process continues as long as new octopuses keep having their
     // energy level increased beyond 9.
     // (an octopus can only flash at most once per step.)
-    /*
-    for (int i=0; i < grid.size(); ++i) {
-        for (int j=0; j < grid[0].size(); ++j) {
-            deque<Point> q = temp;
-
-            set<Point> visited;
-            while (q.size()) {
-                Point pt = q.front();
-                q.pop_front();
-                visited.insert(pt);
-                
-                if (grid[pt.x][pt.y] > 9) {
-                    ++flashes;
-                    grid[pt.x][pt.y] = -1;
-                }
-
-                for (auto adj : adjs(grid, pt.x, pt.y)) {
-                    if (!visited.count(adj) && grid[adj.x][adj.y] != -1)
-                        q.push_back(adj);
-                }
-            }
-        }
-    }
-    */
-
     bool updated = true;
     while (updated) {
         updated = false;
