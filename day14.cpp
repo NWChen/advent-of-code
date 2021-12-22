@@ -149,12 +149,11 @@ long partTwo(vector<char> &polymer, const Rules &rules, const size_t steps) {
         leastFreq = min(leastFreq, it->second);
     }
 
-    pm(letterfreqs);
+    //pm(letterfreqs);
     //auto comparator = [](const pair<char, size_t> &p1, const pair<char, size_t> &p2) {
     //    return p1.second < p2.second;
     //};
 
-    //int greatestFreq, leastFreq;
     //greatestFreq = max_element(letterfreqs.begin(), letterfreqs.end(), comparator)->second;
     //leastFreq = min_element(letterfreqs.begin(), letterfreqs.end(), comparator)->second;
     return greatestFreq - leastFreq;
