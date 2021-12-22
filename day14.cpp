@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 #include <algorithm>
+#include <limits>
 using namespace std;
 
 typedef unordered_map<string, char> Rules;
@@ -84,48 +85,81 @@ int partOne(vector<char> &polymer, const Rules &rules, const size_t steps) {
     return vals.back() - vals.front();
 }
 
-void oldstep(list<char> &polymer, const Rules &rules) {
-    deque<pair<char, int>> insertions;
-    list<char>::const_iterator it = polymer.begin();
-    char prev = *it;
-    size_t i = 0;
-
-    for (++it; it != polymer.end(); ++it) {
-        string pr = string() + prev + *it;
-
-        if (rules.count(pr)) {
-            auto insertion = make_pair(rules.at(pr), ++i);
-            insertions.push_back(insertion);
-        }
-        prev = *it;
-    }
-
-    for (auto &pr : insertions)
-        cout << pr.first << ":" << pr.second << " ";
-    cout << endl;
-
-    int nInserts = 0;
-    int targetIndex = 0;
-    //list<char>::const_iterator it = polymer.begin();
-    auto itp = polymer.begin();
-    int itIndex = 0;
-
-    while (insertions.size()) {
-
-        pair<char, int> insertion = insertions.front();
-        targetIndex = insertion.second + nInserts;
-        cout << targetIndex << ": " << insertion.second << endl;
-        while (itIndex < targetIndex) {
-            ++itIndex;
-            ++itp;
-        }
-        polymer.insert(itp, insertion.first);
-        ++nInserts;
-        insertions.pop_front();
+template <typename T>
+void pm(unordered_map<T, long> &m) {
+    for (auto it = m.begin(); it != m.end(); ++it) {
+        cout << (*it).first << ": " << (*it).second << endl;
     }
 }
 
-//list<char> toPolymer(const string &line) {
+long partTwo(vector<char> &polymer, const Rules &rules, const size_t steps) {
+
+    unordered_map<string, long> freqs;
+    for (size_t i=0; i < polymer.size()-1; ++i) {
+        string pair = string() + polymer[i] + polymer[i+1];
+        if (!freqs.count(pair))
+            freqs[pair] = 0;
+        ++freqs[pair];
+    }
+
+    for (size_t step=0; step < steps; ++step) {
+        unordered_map<string, long> newFreqs;
+
+        for (auto it = freqs.begin(); it != freqs.end(); ++it) {
+            const string &bigram = (*it).first;
+            if (rules.count(bigram)) {
+                string left = string(1, bigram[0]) + rules.at(bigram);
+                string right = string(1, rules.at(bigram)) + bigram[1];
+
+                if (!newFreqs.count(left))
+                    newFreqs[left] = 0;
+                if (!newFreqs.count(right))
+                    newFreqs[right] = 0;
+                newFreqs[left] += freqs[bigram];
+                newFreqs[right] += freqs[bigram];
+            }
+        }
+
+        freqs = newFreqs;
+    }
+
+    unordered_map<char, long> letterfreqs;
+    for (auto it = freqs.begin(); it != freqs.end(); ++it) {
+        char left = (*it).first[0];
+        char right = (*it).first[1];
+
+        if (!letterfreqs.count(left))
+            letterfreqs[left] = 0;
+        if (!letterfreqs.count(right))
+            letterfreqs[right] = 0;
+        letterfreqs[left] += it->second;
+        letterfreqs[right] += it->second;
+    } 
+
+    // since everything else is duplicated
+    ++letterfreqs[polymer[0]];
+    ++letterfreqs[polymer[polymer.size()-1]];
+
+    long greatestFreq = 0;
+    long leastFreq = numeric_limits<long>::max();
+
+    for (auto it = letterfreqs.begin(); it != letterfreqs.end(); ++it) {
+        it->second /= 2;
+        greatestFreq = max(greatestFreq, it->second);
+        leastFreq = min(leastFreq, it->second);
+    }
+
+    pm(letterfreqs);
+    //auto comparator = [](const pair<char, size_t> &p1, const pair<char, size_t> &p2) {
+    //    return p1.second < p2.second;
+    //};
+
+    //int greatestFreq, leastFreq;
+    //greatestFreq = max_element(letterfreqs.begin(), letterfreqs.end(), comparator)->second;
+    //leastFreq = min_element(letterfreqs.begin(), letterfreqs.end(), comparator)->second;
+    return greatestFreq - leastFreq;
+}
+
 vector<char> toPolymer(const string &line) {
     vector<char> cs;
     for (auto &c : line)
@@ -136,5 +170,6 @@ vector<char> toPolymer(const string &line) {
 int main(int argc, char **argv) {
     shared_ptr<Input> input = read(argv[1]);
     vector<char> polymer = toPolymer(input->init);
-    cout << partOne(polymer, input->rules, stoi(argv[2])) << endl;
+    //cout << partOne(polymer, input->rules, stoi(argv[2])) << endl;
+    cout << partTwo(polymer, input->rules, stoi(argv[2])) << endl;
 }
