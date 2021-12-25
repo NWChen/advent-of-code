@@ -5,7 +5,7 @@
 #include "day5utils.h"
 using namespace std;
 
-Point csvToPoint(const string csv) {
+Point csvToPoint(const string &csv) {
     int commaIndex = csv.find(',');
     string left = csv.substr(0, commaIndex);
     csv.erase(0, commaIndex+1);
