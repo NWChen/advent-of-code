@@ -295,58 +295,14 @@ int maxMagnitude(const string &filename) {
     }
     return out;
 }
-//int maxMagnitude(deque <Node*> seqs) {
-//    int out = 0;
-//    for (auto x : seqs) {
-//        for (auto y : seqs) {
-//
-//            if (x != y) {
-//                Node *_x = x;
-//                Node *_y = y;
-//                Node *xsum = add(_x, _y);
-//                while (reduce(xsum)) {}
-//
-//                int xy = magnitude(xsum);
-//                if (xy > out) {
-//                    cout << "---" << endl;
-//                    traverse(x);
-//                    cout << endl;
-//                    traverse(y);
-//                    cout << endl << "---" << endl;
-//                    out = xy;
-//                }
-//                //if (yx > out) {
-//                //    cout << "---" << endl;
-//                //    traverse(x);
-//                //    cout << endl;
-//                //    traverse(y);
-//                //    cout << endl << "---" << endl;
-//                //    out = yx;
-//                //}
-//            }
-//        }
-//    }
-//    return out;
-//}
 
 int main(int argc, char **argv) {
-    //string line = argv[1];
-    //Node *node = ston(line);
-
     auto buf = fread(argv[1]);
-    for (auto &e : buf) {
-        traverse(e);
-        cout << endl;
-    }
-    cout << endl;
-
+    
     // part one
-    //Node *res = add(buf);
-    //cout << endl << magnitude(res) << endl;
+    Node *res = add(buf);
+    cout << endl << magnitude(res) << endl;
 
     // part two
     cout << endl << maxMagnitude(argv[1]) << endl;
-    //cout << endl << maxMagnitude(buf) << endl;
-
-    //cout << nearestLeftNeighbor(node->left->right)->value << endl;
 }
