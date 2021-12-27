@@ -5,10 +5,8 @@
 #include <string>
 #include <deque>
 #include <unordered_map>
-//#include <cmath>
 using namespace std;
 
-// 3*(3+4) + 2*(3*17 + 2*5) = 21 + 122 = 143
 // a Node can either have a left & right,
 // or a value,
 // never both at the same time
@@ -86,8 +84,7 @@ Node *nearestLeftNeighbor(Node *node) {
         return nullptr;
 
     ParentSide dir = cur->parentSide;
-    //cout << "dir: " << dir << endl;
-    cur = cur->parent; //->parent;
+    cur = cur->parent;
     while (cur) {
         if (dir != ParentSide::right) {
             Node *temp = rightmost(cur->left);
@@ -171,7 +168,6 @@ Node* canExplode(Node *node) {
 
 void explode(Node *node) {
     Node* toExplode = canExplode(node);
-    //cout << "explode: " << toExplode->value << endl;
     Node* parent = toExplode->parent;
 
     if (!toExplode)
@@ -179,17 +175,14 @@ void explode(Node *node) {
 
     Node* nearestLeft = nearestLeftNeighbor(parent);
     if (nearestLeft) {
-        //cout << "left: " << nearestLeft->value << endl;
         nearestLeft->value += parent->left->value;
     }
     
     Node* nearestRight = nearestRightNeighbor(parent);
     if (nearestRight) {
-        //cout << "right: " << nearestRight->value << endl;
         nearestRight->value += parent->right->value;
     }
 
-    //parent->parent = toExplode->parent->parent;
     parent->left = nullptr;
     parent->right = nullptr;
     parent->value = 0;
@@ -213,8 +206,8 @@ bool reduce(Node *node) {
 void traverse(Node *root) {
     if (!root)
         return;
-    if (root->value != -1)// && root->parent)
-        cout << " " << root->value << " "; //":" << root->depth << "," << root->parent->depth<< " ";
+    if (root->value != -1)
+        cout << " " << root->value << " ";
     else
         cout << "[";
     traverse(root->left);
@@ -248,13 +241,8 @@ Node *add(Node *left, Node *right) {
 
 Node *add(deque<Node*> nodes) {
     while (nodes.size() >= 2) {
-        //reduce(nodes[0]);
-        //reduce(nodes[1]);
         Node *temp = add(nodes[0], nodes[1]);
-        while (reduce(temp)) {
-            //traverse(temp);
-            //cout << endl;
-        }
+        while (reduce(temp)) {}
         nodes.pop_front(); // 0
         nodes.pop_front(); // 1
         nodes.push_front(temp);
