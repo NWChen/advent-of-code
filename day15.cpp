@@ -209,6 +209,7 @@ void printGrid(Grid &grid) {
 }
 
 int main(int argc, char **argv) {
+    argv[1] = "input/input15.txt";
     shared_ptr<Grid> grid = fread(argv[1]);
     //printGrid(*expandByFive(*grid));
 
