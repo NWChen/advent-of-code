@@ -27,6 +27,9 @@ def fread(filename: str) -> defaultdict:
     scanner_to_beacons = { k: np.array(v) for k, v in scanners.items() } # these values are deltas, not points!
     return scanner_to_beacons
 
+def euclidean(b1: np.ndarray, b2: np.ndarray):
+    return np.linalg.norm(np.abs(b1 - b2))
+
 def manhattan(b1: np.ndarray, b2: np.ndarray):
     return np.sum(np.absolute(b2 - b1))
 
@@ -34,12 +37,12 @@ def distances(beacons: np.ndarray):
     mat = np.zeros((beacons.shape[0], beacons.shape[0]), dtype=int) 
     for i, b1 in enumerate(beacons): # TODO this is inefficent use of numpy
         for j, b2 in enumerate(beacons):
-            if not np.array_equal(b1, b2):
+            if i != j:
                 mat[i][j] = manhattan(b1, b2)
     return mat
 
 # bs1, bs2: |beacons| x |beacons| distance mats, possibly different shapes
-def shared_beacons(bs1: np.ndarray, bs2: np.ndarray):
+def get_shared_beacons(bs1: np.ndarray, bs2: np.ndarray):
     for row1 in bs1:
         for row2 in bs2:
             intersection, bs1_idxs, bs2_idxs = np.intersect1d(row1, row2, return_indices=True)
@@ -52,30 +55,34 @@ def shared_beacons(bs1: np.ndarray, bs2: np.ndarray):
 # note rotation+translation doesn't commute
 def compute_tf(mat1, mat2):
     for R in octahedral_groups():
-        Rx = np.dot(mat1, R)
+        Rx = np.matmul(mat1, R)
         succ, T = translate(Rx, mat2)
+        #succ, T = translate(mat2, Rx)
         if succ:
             return (True, R, T) 
-    return (False, None, None)            
+    return (False, None, None)
 
 # returns path from $scanner -> 0 for all scanners in adj
+# no guarantee of shortest path
 def paths(adjs, scanner_ids):
     out = {}
     q = []
     for id in [id for id in scanner_ids if id != 0]:
-        q.append((id, set(), [id])) 
+        q.append((id, {id}, [id])) 
     
     while q:
         id, visited, path = q.pop(0)
         if id == 0:
             out[path[0]] = path
-            continue
-        for adj in [adj for adj in adjs if adj not in visited]:
-            _visited = set(visited)
-            _visited.add(adj)
-            q.append((adj, _visited, path + [adj])) 
+        elif 0 in adjs[id]:
+            q.append((0, visited, path + [0]))
+        else:
+            for adj in [adj for adj in adjs[id] if adj not in visited]:
+                _visited = set(visited)
+                _visited.add(adj)
+                q.append((adj, _visited, path + [adj])) 
     return out
-            
+       
 def partOne(filename):
     scanners = fread(sys.argv[1])
     
@@ -86,52 +93,101 @@ def partOne(filename):
         dists[scanner] = distances(beacons)
     
     # compute scanner-scanner intersections
+    shared_beacons = defaultdict(dict)
     for s1, d1 in dists.items():
         for s2, d2 in [tup for tup in dists.items() if tup[0] != s1]:
-            n_matched, bs1_idxs, bs2_idxs = shared_beacons(d1, d2)
+            n_matched, bs1_idxs, bs2_idxs = get_shared_beacons(d1, d2)
             if n_matched >= 12:
                 bs1 = scanners[s1][bs1_idxs]
                 bs2 = scanners[s2][bs2_idxs]
-                intersections[s1].append((s2, bs1, bs2))
-                print(s1, s2)
+                shared_beacons[s1][s2] = (bs1, bs2)
+                shared_beacons[s2][s1] = (bs2, bs1)
+                intersections[s1].append(s2)
+                intersections[s2].append(s1)
+                #intersections[s1].append((s2, bs1, bs2))
+                #intersections[s2].append((s1, bs2, bs1)) # TODO why does this unbreak things
      
     # compute scanner-scanner transformations
     tf = defaultdict(dict)
+    adjs = defaultdict(list)
     q = [] # q[i] = (origin scanner, visited so far, path, rotation matrix)
     for s1 in intersections:
-        for (s2, bs1, bs2) in intersections[s1]:
-                valid_tf, R, T = compute_tf(bs1, bs2)
-                if valid_tf:
-                    tf[s1][s2] = (R, T)
-        if 0 not in tf[s1]:
+        #for (s2, bs1, bs2) in intersections[s1]:
+        for s2 in intersections[s1]:
+            (bs1, bs2) = shared_beacons[s1][s2]
+            valid_tf, R, T = compute_tf(bs1, bs2)
+            if valid_tf:
+                tf[s1][s2] = (R, T)
+                adjs[s1].append(s2)
+        if s1 not in tf or 0 not in tf[s1]:
             q.append((s1, set(), [], np.eye(3)))
+            
+    #for k, v in intersections.items():
+    #    print(k, [e[0] for e in v])
+    #print([(k, v.keys()) for k, v in tf.items()])
+    #print(tf[1])
+    #print(np.matmul(scanners[1], tf[1][0][0]) + tf[1][0][1])
 
     # fill in remaining transformations: from $scanner to 0
-    # tf[s1][s2] = (rotation, translation) for s2 wrt s1
-    while q:
-        scanner, visited, path, R = q.pop(0)
-        if path and path[-1] == 0:
-            tf[scanner][0] = R
-        else:
-            for tup in intersections[scanner]:
-                neighbor = tup[0]
-                if neighbor not in visited and neighbor in tf[scanner]:
-                    _R = np.matmul(R, tf[scanner][neighbor][0])
-                    _visited = set(visited)
-                    _visited.add(neighbor)
-                    q.append((neighbor, _visited, path + [neighbor], _R))
+    # tf[s1][s2] = (rotation, translation) from s1 to s2
+    s0_basis_beacons = {}
     
-    for k, v in tf.items(): 
-        print(k, v.keys()) 
-    #beacons_with_s0_basis = pass 
-    #n_beacons = np.unique(beacons_with_s0_basis).shape[0]
-    #return n_beacons     
+    for scanner, path in paths(adjs, intersections.keys()).items():
+        mat = scanners[scanner]
+        
+        # apply sequence of rotations to get $scanner in scanner0's basis
+        for i in range(len(path) - 1):
+            from_scanner, to_scanner= path[i], path[i + 1]
+            (R, T) = tf[from_scanner][to_scanner]
+            #mat = np.matmul(mat, R)
+            mat = np.add(np.matmul(mat, R), T)
+        #print(path[i], shared_beacons[path[i]])
+        #(succ, T_vec) = translate(shared_beacons[path[i]][0][0], shared_beacons[path[i]][0][1])
+        #if succ:
+        #    mat = np.add(mat, np.tile(T_vec, (mat.shape[0], 1)))
+        #else:
+        #    print("get fucked")
+        s0_basis_beacons[scanner] = mat
+    
+    # add scanner 0 as well
+    s0_basis_beacons[0] = scanners[0]
+    
+    s4_to_s1 = np.matmul(scanners[4], tf[4][1][0])# + tf[4][1][1]
+    #s1_to_s0 = np.matmul(scanners[1], tf[1][0][0]) + tf[1][0][1]
+    ax = plt.axes(projection='3d')
+    colors = ['b', 'g', 'r', 'black', 'sienna', 'pink']
+    ax.scatter(s4_to_s1[:,0], s4_to_s1[:,1], s4_to_s1[:,2], c='r', s=10)
+    #ax.scatter(s1_to_s0[:,0], s1_to_s0[:,1], s1_to_s0[:,2], c='r', s=10)
+    ax.scatter(scanners[1][:,0], scanners[1][:,1], scanners[1][:,2], c='b', s=20)
+    #ax.scatter(scanners[0][:,0], scanners[0][:,1], scanners[0][:,2], c='b', s=30)
+    #for i in [1, 4]:#s0_basis_beacons:
+    #    xs = s0_basis_beacons[i][:,0]
+    #    ys = s0_basis_beacons[i][:,1]
+    #    zs = s0_basis_beacons[i][:,2]
+    #    ax.scatter(xs, ys, zs, c=colors[i], alpha=0.5, s=10.0)
+    #    for j in range(s0_basis_beacons[i].shape[0]):
+    #        ax.text(xs[j], ys[j], zs[j], i)
+     # TEMP FOR DEBUGGING 
+    plt.show()
+   
+    print(scanners[1].shape) 
+    print(scanners[4].shape) 
+    print(np.unique(np.concatenate((s4_to_s1, scanners[1]), axis=0), axis=0).shape)
+    s0_basis_beacons = np.concatenate(list(s0_basis_beacons.values()), axis=0)
+    s0_basis_beacons = np.unique(s0_basis_beacons, axis=0)
+    print(s0_basis_beacons.shape)
+   
+    
+    #with open('temp', 'w+') as f:
+    #    print("writing")
+    #    f.write(str(s0_basis_beacons))
+    n_beacons = s0_basis_beacons.shape[0]
+    return n_beacons
     
     # at the end we should be able to take np.unique(all known beacons, i.e. all transformations wrt e.g. scanner 0)                
     # to get # of beacons
     # to do that, we need all transformations wrt scanner 0
     # traverse DAG of transformations, for all scanners other than 0?
-    return 0
 
 # for any 2 scanners,
 # is there a permutation & translation of each scanner, such that both scanners see the same >=12 beacons?
@@ -161,6 +217,9 @@ def eq(beacons1, beacons2):
 def badpartOne(filename):
     fig = plt.figure()
     ax = plt.axes(projection='3d')
+    #ax.scatter(perm[:,0], perm[:,1], perm[:,2], c=colors[scanner], alpha=0.5)
+    #plt.show()
+    
     colors = ['c', 'r', 'g', 'y', 'b']
     
     out = 0 
