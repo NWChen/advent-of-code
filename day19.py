@@ -57,7 +57,25 @@ def compute_tf(mat1, mat2):
         if succ:
             return (True, R, T) 
     return (False, None, None)            
-        
+
+# returns path from $scanner -> 0 for all scanners in adj
+def paths(adjs, scanner_ids):
+    out = {}
+    q = []
+    for id in [id for id in scanner_ids if id != 0]:
+        q.append((id, set(), [id])) 
+    
+    while q:
+        id, visited, path = q.pop(0)
+        if id == 0:
+            out[path[0]] = path
+            continue
+        for adj in [adj for adj in adjs if adj not in visited]:
+            _visited = set(visited)
+            _visited.add(adj)
+            q.append((adj, _visited, path + [adj])) 
+    return out
+            
 def partOne(filename):
     scanners = fread(sys.argv[1])
     
@@ -92,16 +110,19 @@ def partOne(filename):
     # tf[s1][s2] = (rotation, translation) for s2 wrt s1
     while q:
         scanner, visited, path, R = q.pop(0)
-        if path[-1] == 0:
-            pass
+        if path and path[-1] == 0:
+            tf[scanner][0] = R
         else:
-            for neighbor in intersections[scanner]:
-                if neighbor not in visited:
-                    _R = np.matmul(R, tf[scanner][neighbor])
-                    q.append((neighbor, visited + neighbor, path + [neighbor], _R))
-    tf[s1][] 
-     
+            for tup in intersections[scanner]:
+                neighbor = tup[0]
+                if neighbor not in visited and neighbor in tf[scanner]:
+                    _R = np.matmul(R, tf[scanner][neighbor][0])
+                    _visited = set(visited)
+                    _visited.add(neighbor)
+                    q.append((neighbor, _visited, path + [neighbor], _R))
     
+    for k, v in tf.items(): 
+        print(k, v.keys()) 
     #beacons_with_s0_basis = pass 
     #n_beacons = np.unique(beacons_with_s0_basis).shape[0]
     #return n_beacons     
