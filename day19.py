@@ -1,7 +1,7 @@
 import numpy as np
 import re
 import sys
-from day19_geometry import octahedral_groups, rotate, translate
+from day19_geometry import octahedral_groups, translate
 from collections import defaultdict
 from matplotlib import pyplot as plt
 
@@ -30,9 +30,6 @@ def fread(filename: str) -> defaultdict:
 def manhattan(b1: np.ndarray, b2: np.ndarray):
     return np.sum(np.absolute(b2 - b1))
 
-#def euclidean(b1, b2):
-#    return np.linalg.norm(b2 - b1)
-#
 def distances(beacons: np.ndarray):
     mat = np.zeros((beacons.shape[0], beacons.shape[0]), dtype=int) 
     for i, b1 in enumerate(beacons): # TODO this is inefficent use of numpy
@@ -54,23 +51,13 @@ def shared_beacons(bs1: np.ndarray, bs2: np.ndarray):
 # returns (successful?, R, T) if possible
 # note rotation+translation doesn't commute
 def compute_tf(mat1, mat2):
-    #from scipy import spatial
-    #for R in spatial.transform.Rotation.create_group("O").as_matrix():
     for R in octahedral_groups():
         Rx = np.dot(mat1, R)
         succ, T = translate(Rx, mat2)
         if succ:
             return (True, R, T) 
     return (False, None, None)            
-    #for up in range(0, 360, 90):
-    #    for normal in np.concatenate((np.eye(3), -np.eye(3))):
-    #        (R, Rx) = rotate(mat1, up, normal) 
-    #        print(R)
-    #        (successful, T) = translate(Rx, mat2)
-    #        if successful:
-    #            return (True, R, T)
-    #return (False, None, None)
-    
+        
 def partOne(filename):
     scanners = fread(sys.argv[1])
     
@@ -88,17 +75,36 @@ def partOne(filename):
                 bs1 = scanners[s1][bs1_idxs]
                 bs2 = scanners[s2][bs2_idxs]
                 intersections[s1].append((s2, bs1, bs2))
+                print(s1, s2)
      
     # compute scanner-scanner transformations
     tf = defaultdict(dict)
+    q = [] # q[i] = (origin scanner, visited so far, path, rotation matrix)
     for s1 in intersections:
         for (s2, bs1, bs2) in intersections[s1]:
                 valid_tf, R, T = compute_tf(bs1, bs2)
                 if valid_tf:
                     tf[s1][s2] = (R, T)
+        if 0 not in tf[s1]:
+            q.append((s1, set(), [], np.eye(3)))
 
-    # fill in remaining transformations
-    print(tf)
+    # fill in remaining transformations: from $scanner to 0
+    # tf[s1][s2] = (rotation, translation) for s2 wrt s1
+    while q:
+        scanner, visited, path, R = q.pop(0)
+        if path[-1] == 0:
+            pass
+        else:
+            for neighbor in intersections[scanner]:
+                if neighbor not in visited:
+                    _R = np.matmul(R, tf[scanner][neighbor])
+                    q.append((neighbor, visited + neighbor, path + [neighbor], _R))
+    tf[s1][] 
+     
+    
+    #beacons_with_s0_basis = pass 
+    #n_beacons = np.unique(beacons_with_s0_basis).shape[0]
+    #return n_beacons     
     
     # at the end we should be able to take np.unique(all known beacons, i.e. all transformations wrt e.g. scanner 0)                
     # to get # of beacons

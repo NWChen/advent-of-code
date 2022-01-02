@@ -1,30 +1,6 @@
 import numpy as np
 
-# TODO this creates a new numpy array from nested list each invocation
-# which is very inefficient
-# orient a beacon in 3d space, assuming origin at (0, 0, 0)
-# using [beacon_]deltas from origin, in the plane specified by 'normal' vector
-# up = degrees: one of 0, 90, 180, 270
-# beacons: an (|beacons|, 3) array
-def rotate(beacons: np.ndarray, up: int, normal: np.ndarray):
-    R = None
-    rad = np.radians(up)
-    cos, sin = np.cos(rad), np.sin(rad)
-    if normal[0] != 0:
-        R = np.array([[1, 0, 0],
-           [0, cos, -sin],
-           [0, sin, cos]], dtype=int)
-    elif normal[1] != 0:
-        R = np.array([[cos, 0, sin],
-           [0, 1, 0],
-           [-sin, 0, cos]], dtype=int)
-    elif normal[2] != 0:
-        R = np.array([[cos, -sin, 0],
-           [sin, cos, 0],
-           [0, 0, 1]], dtype=int)
-    print(R.shape)
-    return (R, np.dot(beacons, R))
-
+# TODO this creates a new numpy array from nested list each invocation - inefficient
 def octahedral_groups():
     out = []
     for rot in range(0, 360, 90):
