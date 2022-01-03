@@ -38,7 +38,8 @@ def distances(beacons: np.ndarray):
     for i, b1 in enumerate(beacons): # TODO this is inefficent use of numpy
         for j, b2 in enumerate(beacons):
             if i != j:
-                mat[i][j] = euclidean(b1, b2)
+                mat[i][j] = manhattan(b1, b2)
+                #mat[i][j] = euclidean(b1, b2)
     return mat
 
 # bs1, bs2: |beacons| x |beacons| distance mats, possibly different shapes
@@ -47,7 +48,7 @@ def get_shared_beacons(bs1: np.ndarray, bs2: np.ndarray):
         for row2 in bs2:
             intersection, bs1_idxs, bs2_idxs = np.intersect1d(row1, row2, return_indices=True)
             # TODO do we have to worry about 0 values here?
-            if intersection.shape[0] >= 11: # 11, since 1 of the beacons will have dist 0 (gives us 12)
+            if intersection.shape[0] >= 12: # 11, since 1 of the beacons will have dist 0 (gives us 12)
                 return (intersection.shape[0], bs1_idxs, bs2_idxs)
     return (0, None, None)
 
@@ -58,32 +59,53 @@ def compute_tf(mat1, mat2):
     for R in octahedral_groups():
         R = R.astype('int') # <<< this is very important, otherwise matmul defaults to float & floating point check may error out in line 61
         Rx = np.matmul(mat1, R)
-        succ, T_vec = translate(Rx, mat2)
+        succ, T_vec = translate(Rx.astype('int'), mat2)
         if succ:
-            return (True, R, T_vec) 
+            return (True, R, T_vec.astype('int')) 
     return (False, None, None)
 
-# returns path from $scanner -> 0 for all scanners in adj
+def connected_components(adjs):
+    visited = set()
+    
+    def component(scanner):
+        scanners = {scanner}
+        while scanners:
+            scanner = scanners.pop()
+            visited.add(scanner)
+            scanners |= (set(adjs[scanner]) - visited)
+            yield scanner
+    
+    components = []        
+    for adj in adjs:
+        if adj not in visited:
+            components.append(list(component(adj)))
+    return components
+
+# returns path from $scanner -> target_id for all scanners in adj
 # no guarantee of shortest path
-def paths(adjs, scanner_ids):
+def paths(adjs, target_id):
     out = {}
     q = []
-    for id in [id for id in scanner_ids if id != 0]:
+    for id in adjs.keys():
         q.append((id, {id}, [id])) 
     
     while q:
         id, visited, path = q.pop(0)
-        if id == 0:
+        if id == target_id:
             out[path[0]] = path
-        elif 0 in adjs[id]:
-            q.append((0, visited, path + [0]))
+        #elif 0 in adjs[id]:
+        #    q.append((0, visited, path + [0]))
         else:
-            for adj in [adj for adj in adjs[id] if adj not in visited]:
+            for adj in set([adj for adj in adjs[id] if adj not in visited]):
+                _path = path + [adj]
+                #out[id][adj] = _path
                 _visited = set(visited)
                 _visited.add(adj)
-                q.append((adj, _visited, path + [adj])) 
+                q.append((adj, _visited, _path))
+    if target_id in out:
+        del out[target_id]
     return out
-       
+
 def partOne(filename):
     scanners = fread(sys.argv[1])
     
@@ -101,7 +123,7 @@ def partOne(filename):
             if s1 == s2:
                 continue
             n_matched, bs1_idxs, bs2_idxs = get_shared_beacons(d1, d2)
-            if n_matched >= 11:
+            if n_matched >= 12:
                 bs1 = scanners[s1][bs1_idxs]
                 bs2 = scanners[s2][bs2_idxs]
                 shared_beacons[s1][s2] = (bs1, bs2)
@@ -111,16 +133,15 @@ def partOne(filename):
      
     # compute scanner-scanner transformations
     tf = defaultdict(dict)
-    adjs = defaultdict(list)
+    adjs = defaultdict(set)
     for s1 in intersections:
         #for (s2, bs1, bs2) in intersections[s1]:
         for s2 in intersections[s1]:
             (bs1, bs2) = shared_beacons[s1][s2]
-           
             valid_tf, R, T = compute_tf(bs1, bs2)
             if valid_tf:
                 tf[s1][s2] = (R, T)
-                adjs[s1].append(s2)
+                adjs[s1].add(s2)
     
     #print(intersections)        
     #print([(k, v.keys()) for k, v in tf.items()])
@@ -131,9 +152,14 @@ def partOne(filename):
     # fill in remaining transformations: from $scanner to 0
     # tf[s1][s2] = (rotation, translation) from s1 to s2
     s0_basis_beacons = {}
-    _paths = paths(adjs, intersections.keys()).items()
-    import pdb; pdb.set_trace()
-    for scanner, path in _paths:
+    #for component in connected_components(adjs):
+    #    print(component)
+    #    target_id = component[0]
+    #    component = set(component)
+    #_paths = paths(adjs, intersections.keys()).items()
+    #    _adjs = {k: v for k, v in adjs.items() if k in component}
+    for scanner, path in paths(adjs, 0).items():
+        print(path)
         mat = scanners[scanner]
         
         # apply sequence of rotations to get $scanner in scanner0's basis
@@ -146,7 +172,7 @@ def partOne(filename):
     # add scanner 0 as well
     s0_basis_beacons[0] = scanners[0]
     
-    ax = plt.axes(projection='3d')
+    #ax = plt.axes(projection='3d')
     #colors = ['b', 'g', 'r', 'black', 'sienna', 'pink']
     #s4_to_s1 = np.matmul(scanners[4], tf[4][1][0]) + tf[4][1][1]
     #print(s0_basis_beacons[4])
@@ -171,9 +197,11 @@ def partOne(filename):
     #print(scanners[1].shape) 
     #print(scanners[4].shape) 
     #print(np.unique(np.concatenate((s4_to_s1, scanners[1]), axis=0), axis=0).shape)
+    print([(k, s0_basis_beacons[k].shape) for k in sorted(list(s0_basis_beacons.keys()))])
     s0_basis_beacons = np.concatenate(list(s0_basis_beacons.values()), axis=0)
     s0_basis_beacons = np.unique(s0_basis_beacons, axis=0)
     n_beacons = s0_basis_beacons.shape[0]
+    #import pdb; pdb.set_trace()
     return n_beacons
    
 if __name__ == '__main__':
