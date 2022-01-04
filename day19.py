@@ -78,16 +78,20 @@ def paths(adjs, target_id):
 def rotations():
     return spatial.transform.Rotation.create_group('O').as_matrix()
 
-def translate(s_i, s_j, mat_i, mat_j):
-    assert(mat_i.dtype == 'int64') 
-    assert(mat_j.dtype == 'int64') 
-    # unknown point correspondence
-    # is there a translation mat_i -> mat_j that results in >=12 matches?
+def compute_distances(mat_i, mat_j, dist_func=manhattan):
+    distances = np.zeros((mat_i.shape[0], mat_j.shape[0]), dtype='int64')
     distances = np.zeros((mat_i.shape[0], mat_j.shape[0]), dtype='int64')
     for i in range(mat_i.shape[0]):
         for j in range(mat_j.shape[0]):
-            distances[i][j] = manhattan(mat_i[i,], mat_j[j,]) #mat_j[j,] - mat_i[i,]
-           
+            distances[i][j] = dist_func(mat_i[i,], mat_j[j,])
+    return distances
+
+def translate(s_i, s_j, mat_i, mat_j):
+    # assert(mat_i.dtype == 'int64') 
+    # assert(mat_j.dtype == 'int64') 
+    # unknown point correspondence
+    # is there a translation mat_i -> mat_j that results in >=12 matches?
+    distances = compute_distances(mat_i, mat_j)
     for i in range(mat_i.shape[0]):
         for j in range(mat_j.shape[0]):           
             dist = manhattan(mat_i[i,], mat_j[j,])
@@ -106,7 +110,7 @@ def compute_tf(s_i, s_j, scanners):
             return (True, R, T)
     return (False, None, None) 
         
-def partOne(filename):
+def solve(filename):
     scanners = fread(sys.argv[1]) 
     tfs = defaultdict(dict)
     adjs = defaultdict(set)
@@ -119,22 +123,35 @@ def partOne(filename):
                 adjs[s_i].add(s_j)
                 
     s0_basis_beacons = {}
+    s0_basis_scanners = {}
     for scanner, path in paths(adjs, 0).items():
         mat = scanners[scanner]
+        s_mat = np.zeros((3,), dtype='int64')
         for i in range(len(path) - 1):
             s_from, s_to = path[i], path[i + 1]
             (R, T) = tfs[s_from][s_to]
             assert R.dtype == 'int64'
             assert T.dtype == 'int64'
             mat = np.add(np.matmul(mat, R).astype('int64'), T)
+            s_mat = np.add(np.matmul(s_mat, R).astype('int64'), T)
             
         s0_basis_beacons[scanner] = mat
+        s0_basis_scanners[scanner] = s_mat
 
     s0_basis_beacons[0] = scanners[0]
+    s0_basis_scanners[0] = np.zeros((3,), dtype='int64')
+    
+    # part 2
+    max_scanner_distance = 0
+    for s1 in s0_basis_scanners.values():
+        for s2 in s0_basis_scanners.values():
+            max_scanner_distance = max(manhattan(s1, s2), max_scanner_distance)
+    import pdb; pdb.set_trace()
+    
     s0_basis_beacons = np.concatenate(list(s0_basis_beacons.values()), axis=0)
     s0_basis_beacons = np.unique(s0_basis_beacons, axis=0)
     n_beacons = s0_basis_beacons.shape[0]
-    return n_beacons                
+    return (n_beacons, max_scanner_distance)
         
     #ax = plt.axes(projection='3d')
     #colors = ['b', 'g', 'r', 'black', 'sienna', 'pink']
@@ -163,5 +180,5 @@ def partOne(filename):
     #print(np.unique(np.concatenate((s4_to_s1, scanners[1]), axis=0), axis=0).shape)
   
 if __name__ == '__main__':
-    print(partOne(sys.argv[1]))
+    print(solve(sys.argv[1]))
     
