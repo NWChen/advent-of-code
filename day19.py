@@ -31,10 +31,11 @@ def euclidean(b1: np.ndarray, b2: np.ndarray):
     return np.linalg.norm(b1 - b2)
 
 def manhattan(b1: np.ndarray, b2: np.ndarray):
-    return np.sum(np.absolute(b2 - b1))
+    return np.linalg.norm(b1 - b2, ord=1)
+    #return np.sum(np.absolute(b2 - b1))
 
 def distances(beacons: np.ndarray):
-    mat = np.zeros((beacons.shape[0], beacons.shape[0]), dtype=int) 
+    mat = np.zeros((beacons.shape[0], beacons.shape[0]), dtype='int64') 
     for i, b1 in enumerate(beacons): # TODO this is inefficent use of numpy
         for j, b2 in enumerate(beacons):
             if i != j:
@@ -44,6 +45,8 @@ def distances(beacons: np.ndarray):
 
 # bs1, bs2: |beacons| x |beacons| distance mats, possibly different shapes
 def get_shared_beacons(bs1: np.ndarray, bs2: np.ndarray):
+    assert bs1.dtype == 'int64'
+    assert bs2.dtype == 'int64'
     for row1 in bs1:
         for row2 in bs2:
             intersection, bs1_idxs, bs2_idxs = np.intersect1d(row1, row2, return_indices=True)
@@ -57,11 +60,15 @@ def get_shared_beacons(bs1: np.ndarray, bs2: np.ndarray):
 # note rotation+translation doesn't commute
 def compute_tf(mat1, mat2):
     for R in octahedral_groups():
-        R = R.astype('int') # <<< this is very important, otherwise matmul defaults to float & floating point check may error out in line 61
-        Rx = np.matmul(mat1, R)
-        succ, T_vec = translate(Rx.astype('int'), mat2)
+        # astype('int') <<< this is very important, otherwise matmul defaults to float & floating point check may error out in line 61
+        #R = R.astype('int64')
+        Rx = np.matmul(mat1, R).astype('int64')
+        Rx = Rx.astype('int64')
+        assert Rx.dtype == 'int64'
+        assert mat2.dtype == 'int64'
+        succ, T_vec = translate(Rx, mat2)
         if succ:
-            return (True, R, T_vec.astype('int')) 
+            return (True, R, T_vec) 
     return (False, None, None)
 
 def connected_components(adjs):
@@ -118,7 +125,6 @@ def partOne(filename):
     # compute scanner-scanner intersections
     shared_beacons = defaultdict(dict)
     for s1, d1 in dists.items():
-        #for s2, d2 in [tup for tup in dists.items() if tup[0] != s1]:
         for s2, d2 in dists.items():
             if s1 == s2:
                 continue
@@ -130,12 +136,11 @@ def partOne(filename):
                 shared_beacons[s2][s1] = (bs2, bs1)
                 intersections[s1].append(s2)
                 intersections[s2].append(s1)
-     
+                
     # compute scanner-scanner transformations
     tf = defaultdict(dict)
     adjs = defaultdict(set)
     for s1 in intersections:
-        #for (s2, bs1, bs2) in intersections[s1]:
         for s2 in intersections[s1]:
             (bs1, bs2) = shared_beacons[s1][s2]
             valid_tf, R, T = compute_tf(bs1, bs2)
@@ -158,16 +163,26 @@ def partOne(filename):
     #    component = set(component)
     #_paths = paths(adjs, intersections.keys()).items()
     #    _adjs = {k: v for k, v in adjs.items() if k in component}
-    for scanner, path in paths(adjs, 0).items():
-        print(path)
-        mat = scanners[scanner]
+    #_paths = paths(adjs, 0)
+    import pdb; pdb.set_trace() 
+    for component in connected_components(adjs):
+        print(component)
+        _adjs = { k: v for k, v in adjs.items() if k in component }
+        _paths = paths(_adjs, component[0])
         
-        # apply sequence of rotations to get $scanner in scanner0's basis
-        for i in range(len(path) - 1):
-            from_scanner, to_scanner = path[i], path[i + 1]
-            (R, T) = tf[from_scanner][to_scanner]
-            mat = np.add(np.matmul(mat, R), T)
-        s0_basis_beacons[scanner] = mat
+        for scanner, path in _paths.items():
+            mat = scanners[scanner]
+            
+            # apply sequence of rotations to get $scanner in scanner0's basis
+            for i in range(len(path) - 1):
+                from_scanner, to_scanner = path[i], path[i + 1]
+                (R, T) = tf[from_scanner][to_scanner]
+                R = R.astype('int64')
+                T = T.astype('int64')
+                mat = np.add(np.matmul(mat, R), T)
+            
+            assert mat.dtype == 'int64'
+            s0_basis_beacons[scanner] = mat
     
     # add scanner 0 as well
     s0_basis_beacons[0] = scanners[0]
