@@ -18,8 +18,5 @@ def is_fresh(id: int, ranges: list) -> int:
     return 0
 
 
-fresh = 0
-# ranges = sorted(ranges)
-for id in ids:
-    fresh += is_fresh(id, ranges)
+fresh = sum([is_fresh(id, ranges) for id in ids])
 print(fresh)
