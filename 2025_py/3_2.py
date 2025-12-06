@@ -2,10 +2,15 @@ import sys
 
 
 # find twelve digits, inorder in b, such that they form a maximal integer
+# greedily selects max digits, searching for the maximal digit from right to left
 def max_joltage(b: int) -> int:
     sb = str(b)
+
+    # start with the last 12 digits
     idxs = [(len(sb) - i) for i in range(1, 13)][::-1]
     min_idx = -1
+
+    # push each digit pointer left, then associate it with the max digit found
     for i, idx in enumerate(idxs):
         max_idx, max_digit = idx, 0
         while idx > min_idx:
