@@ -1,35 +1,7 @@
 import sys
 
+
 # find twelve digits, inorder in b, such that they form a maximal integer
-# def max_joltage(b: int) -> int:
-#     sb = str(b)
-
-#     def neighbors(idx: int):
-#         return [j for j in range(idx + 1, len(sb))]
-
-#     out = 0
-#     visited = set()
-#     q = [(int(sb[i]), i) for i in range(len(sb) - 12)]
-#     max_joltage_so_far = 0
-#     while q:
-#         joltage_so_far, idx = q.pop(0)
-#         print(f"{b}: {idx} / {len(sb)} ({joltage_so_far})")
-#         if joltage_so_far in visited or joltage_so_far < max_joltage_so_far:
-#             continue
-#         visited.add(joltage_so_far)
-#         sj = str(joltage_so_far)
-#         max_joltage_so_far = max(joltage_so_far, max_joltage_so_far)
-#         if len(sj) == 12:
-#             out = max(out, joltage_so_far)
-#         else:
-#             for j in neighbors(idx):
-#                 next_digit = sb[j]
-#                 next_sj = sj + str(next_digit)
-#                 q.append((int(next_sj), j))
-
-#     return out
-
-
 def max_joltage(b: int) -> int:
     sb = str(b)
     idxs = [(len(sb) - i) for i in range(1, 13)][::-1]
