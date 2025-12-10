@@ -23,6 +23,10 @@ def find(needle: tuple, haystack: list[set[tuple]]):
     return -1
 
 
+def largest_n(components: list[set], n: int = 3):
+    return sorted(components, key=lambda component: -len(component))[:n]
+
+
 circuits = [{point} for point in points]
 connections = 0
 for distance, p1, p2 in distances:
