@@ -1,60 +1,66 @@
+import numpy as np
 from aoc_util import read
-
-EMPTY, RED, GREEN = 0, 1, 2
-
-
-def prettyprint(grid: list[list[int]]) -> None:
-    for row in grid:
-        s = ""
-        for cell in row:
-            match cell:
-                case 0:
-                    s += "."
-                case 1:
-                    s += "R"
-                case 2:
-                    s += "G"
-        print(s)
+from matplotlib import pyplot as plt
 
 
-def max_area(xys: list[tuple]) -> int:
+def prettyprint(xys: list[tuple[int, int]]) -> None:
+    xys = np.array(xys)
+    plt.plot(xys[:, 0], xys[:, 1], "-")
+    plt.show()
+
+
+# check if rectangle bounded by tl (topleft) and br (bottomright) intersects with any edge
+# (assumes all edges are axis-aligned)
+def intersects(tl: tuple[int, int], br: tuple[int, int], edges) -> bool:
+    (r_min, c_min), (r_max, c_max) = tl, br
+    # (c_min, r_min), (c_max, r_max) = tl, br
+    assert r_min < r_max and c_min < c_max
+    for (E_r1, E_c1), (E_r2, E_c2) in edges:
+        if E_r1 == E_r2:
+            r_overlap = r_min < E_r1 < r_max
+            E_c_min = min(E_c1, E_c2)
+            E_c_max = max(E_c1, E_c2)
+            c_overlap = max(c_min, E_c_min) < min(c_max, E_c_max)
+            if r_overlap and c_overlap:
+                return True
+        elif E_c1 == E_c2:
+            c_overlap = c_min < E_c1 < c_max
+            E_r_min = min(E_r1, E_r2)
+            E_r_max = max(E_r1, E_r2)
+            r_overlap = max(r_min, E_r_min) < min(r_max, E_r_max)
+            if r_overlap and c_overlap:
+                return True
+    return False
+
+
+assert intersects((1, 7), (7, 11), [((5, 9), (9, 9))])  # interior of polygon
+assert intersects((1, 7), (7, 11), [((4, 9), (4, 12))])  # right edge of polygon
+assert intersects((1, 7), (7, 11), [((4, 5), (4, 9))])  # left edge of polygon
+assert intersects((1, 7), (7, 11), [((0, 9), (2, 9))])  # top edge of polygon
+assert intersects((1, 7), (7, 11), [((6, 9), (8, 9))])  # bottom edge of polygon
+assert not intersects((1, 7), (7, 11), [((4, 5), (4, 6))])
+
+
+def max_area(xys: list[tuple], edges: list[tuple[int, int]]) -> int:
     m = 0
-    for i, top_left in enumerate(xys):
-        for bottom_right in xys[i + 1 :]:
-            (y1, x1), (y2, x2) = top_left, bottom_right
-            m = max(m, (abs(x2 - x1) + 1) * (abs(y2 - y1) + 1))
+    for i, p1 in enumerate(xys):
+        for p2 in xys[i + 1 :]:
+            (r1, c1), (r2, c2) = p1, p2
+            r_min, r_max = min(r1, r2), max(r1, r2)
+            c_min, c_max = min(c1, c2), max(c1, c2)
+            if not ((r_min < r_max) and (c_min < c_max)):
+                continue
+            tl = (r_min, c_min)
+            br = (r_max, c_max)
+            valid = not intersects(tl, br, edges)
+            if valid:
+                m = max(m, (abs(r_max - r_min) + 1) * (abs(c_max - c_min) + 1))
     return m
-
-
-# inplace update grid
-def scanlines(grid: list[list[int]], xys: list[tuple[int, int]]) -> None:
-    R, C = len(grid), len(grid[0])
-    for r, row in enumerate(grid):
-        intersection_cols = []  # vertical edge crossings
-        for i in range(len(xys) - 1):
-            (r1, c1), (r2, c2) = xys[i], xys[i + 1]
-            if r1 > r2:  # let (r1, c1) be the top point
-                r1, r2 = r2, r1
-                c1, c2 = c2, c1
-
-            if c1 == c2 and r1 <= r <= r2:
-                intersection_cols.append(c1)
-
-        intersection_cols.sort()
-        for i in range(0, len(intersection_cols), 2):
-            left, right = intersection_cols[i], intersection_cols[i + 1]
-            for j in range(left, right + 1):
-                grid[r][j] = GREEN
-
-    # overlay polygon
-    for x, y in xys:
-        grid[x][y] = RED
 
 
 xys = [tuple(map(int, line[::-1].split(","))) for line in read(9).splitlines()]
 xys.append(xys[0])
-M, N = max([x for (x, _) in xys]) + 1, max([y for (_, y) in xys]) + 1
-grid = [[EMPTY for _ in range(N)] for _ in range(M)]
-scanlines(grid, xys)
-prettyprint(grid)
-# print(max_area(xys))
+edges = [(xys[i], xys[i + 1]) for i in range(len(xys) - 1)]
+print(max_area(xys, edges))
+
+# try every rectangle; if it intersects the polygon, it's not a candidate
