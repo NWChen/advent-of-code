@@ -1,82 +1,95 @@
 import numpy as np
+import numpy.typing as npt
 from aoc_util import read
 from matplotlib import pyplot as plt
 
 
-def prettyprint(xys: list[tuple[int, int]]) -> None:
-    xys = np.array(xys)
-    plt.plot(xys[:, 0], xys[:, 1], "-")
+def prettyprint(xys: npt.NDArray, points=False) -> None:
+    if points:
+        plt.matshow(xys)
+    else:
+        plt.plot(xys[:, 0], xys[:, 1], "-")
     plt.show()
 
 
-# check if rectangle bounded by tl (topleft) and br (bottomright) intersects with any edge
-# (assumes all edges are axis-aligned)
-def intersects(tl: tuple[int, int], br: tuple[int, int], edges) -> bool:
-    (r_min, c_min), (r_max, c_max) = tl, br
-    # (c_min, r_min), (c_max, r_max) = tl, br
-    assert r_min < r_max and c_min < c_max
-    for (E_r1, E_c1), (E_r2, E_c2) in edges:
-        r_overlap, c_overlap = False, False
-        if E_r1 == E_r2:
-            E_c_min, E_c_max = min(E_c1, E_c2), max(E_c1, E_c2)
-            r_overlap = r_min < E_r1 < r_max
-            c_overlap = max(c_min, E_c_min) < min(c_max, E_c_max)
-        elif E_c1 == E_c2:
-            E_r_min, E_r_max = min(E_r1, E_r2), max(E_r1, E_r2)
-            r_overlap = max(r_min, E_r_min) < min(r_max, E_r_max)
-            c_overlap = c_min < E_c1 < c_max
-        if r_overlap and c_overlap:
-            return True
-    return False
+def is_collinear(p1, p2, p3):
+    (x1, y1), (x2, y2), (x3, y3) = p1, p2, p3
+    horizontal = y1 == y2 == y3
+    vertical = x1 == x2 == x3
+    return horizontal or vertical
 
 
-def lerp_col(src: tuple[int, int], dst: tuple[int, int], pt: int) -> int:
-    (r1, c1), (r2, c2) = src, dst
-    r, c = pt
-    t = (r - r1) / (r2 - r1)
-    c_intersection = c1 + t * (c2 - c2)
-    return c_intersection
+def compress(xys: list[tuple[int, int]]):
+    out = []
+    for i in range(len(xys)):
+        p1 = xys[(i - 1 + n) % n]
+        p2 = xys[i]
+        p3 = xys[(i + 1) % n]
+        if not is_collinear(p1, p2, p2):
+            out.append(p2)
+    return out
 
 
-# raycast horizontally
-def contains(pt: tuple[int, int], edges: list[tuple[int, int]]) -> bool:
-    r, c = pt
-    crossings = 0
-    for src, dst in edges:
-        (E_r1, E_c1), (E_r2, E_c2) = src, dst
-        crosses = (E_r1 > r) != (E_r2 > r)  # vertical edge
-        if crosses and c < lerp_col(src, dst, pt):
-            crossings += 1
-    return crossings % 2 == 1
+def fill(xys: npt.NDArray):
+    grid = np.zeros((np.max(xys[:, 0]) + 1, np.max(xys[:, 1]) + 1))
+    for (x1, y1), (x2, y2) in zip(xys[:-1], xys[1:]):
+        x1, x2 = min(x1, x2), max(x1, x2)
+        y1, y2 = min(y1, y2), max(y1, y2)
+        grid[x1 : x2 + 1, y1 : y2 + 1] = 1
+
+    seed = (57200, 57200) if 57200 < grid.shape[0] else (9, 5)
+    q, visited = [seed], set([seed])
+    i = 0
+    while q:
+        (x, y) = q.pop(0)
+        i += 1
+        print(f"Filled {i}/{grid.shape[0] * grid.shape[1]}")
+        grid[x][y] = 1
+        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nx, ny = x + dx, y + dy
+            if (
+                (x, y) != (nx, ny)
+                and 0 <= nx < grid.shape[0]
+                and 0 <= ny < grid.shape[1]
+                and grid[nx][ny] == 0
+                and (nx, ny) not in visited
+            ):
+                visited.add((nx, ny))
+                q.append((nx, ny))
+
+    return grid
 
 
-def max_area(xys: list[tuple], edges: list[tuple[int, int]]) -> int:
-    m = 0
-    for i, p1 in enumerate(xys):
-        for p2 in xys[i + 1 :]:
-            (r1, c1), (r2, c2) = p1, p2
-            r_min, r_max = min(r1, r2), max(r1, r2)
-            c_min, c_max = min(c1, c2), max(c1, c2)
-            if not ((r_min < r_max) and (c_min < c_max)):
-                continue
-            tl = (r_min, c_min)
-            br = (r_max, c_max)
-            valid = not intersects(tl, br, edges)
-            contained = contains(tl, edges) and contains(br, edges)
-            if valid and contained:
-                m = max(m, (abs(r_max - r_min) + 1) * (abs(c_max - c_min) + 1))
-    return m
+#     pts = 0
+#     for r in range(grid.shape[0]):
+#         for c in range(grid.shape[1]):
+#             pts += 1
+#             print(f"Filling {pts}/{grid.shape[0] * grid.shape[1]}...")
+#             up = np.any(grid[:r, c])
+#             down = np.any(grid[r + 1 :, c])
+#             left = np.any(grid[r, :c])
+#             right = np.any(grid[r, c + 1 :])
+#             if up and down and left and right:  # intersections with polygon
+#                 grid[r][c] = 1
+
+#     return grid
 
 
-xys = [tuple(map(int, line[::-1].split(","))) for line in read(9).splitlines()]
+def get_max_area(xys: list[tuple[int, int]], grid: npt.NDArray) -> int:
+    max_area = 0
+    for i, (x1, y1) in enumerate(xys):
+        for x2, y2 in xys[i + 1 :]:
+            x_min, x_max = min(x1, x2), max(x1, x2)
+            y_min, y_max = min(y1, y2), max(y1, y2)
+            if np.all(grid[x_min : x_max + 1, y_min : y_max + 1]):
+                area = (x_max - x_min + 1) * (y_max - y_min + 1)
+                max_area = max(max_area, area)
+    return max_area
+
+
+xys = [tuple(map(int, line.split(","))) for line in read(9).splitlines()]
 xys.append(xys[0])
-edges = [(xys[i], xys[i + 1]) for i in range(len(xys) - 1)]
-print(max_area(xys, edges))
-
-# try every rectangle; if it intersects the polygon, it's not a candidate
-# assert intersects((1, 7), (7, 11), [((5, 9), (9, 9))])  # interior of polygon
-# assert intersects((1, 7), (7, 11), [((4, 9), (4, 12))])  # right edge of polygon
-# assert intersects((1, 7), (7, 11), [((4, 5), (4, 9))])  # left edge of polygon
-# assert intersects((1, 7), (7, 11), [((0, 9), (2, 9))])  # top edge of polygon
-# assert intersects((1, 7), (7, 11), [((6, 9), (8, 9))])  # bottom edge of polygon
-# assert not intersects((1, 7), (7, 11), [((4, 5), (4, 6))])
+xys = np.array(xys)
+grid = fill(xys)
+# prettyprint(grid, True)
+print(get_max_area(xys, grid))
