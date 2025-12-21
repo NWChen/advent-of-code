@@ -1,5 +1,4 @@
 import copy
-from collections import deque
 
 from aoc_util import read
 
@@ -10,18 +9,22 @@ adj = {
 
 
 def get_num_paths(src: str, dst: str, adj: dict):
-    q = deque([src])
-    visited = set()
-    out = 0
-    while q:
-        u = q.popleft()
-        visited.add(u)
+    if src not in adj:
+        return 0
+    m = {}  # map node : # paths from node to dst
+
+    def dfs(u):
         if u == dst:
-            out += 1
-            continue
+            return 1
+        if u in m:
+            return m[u]
         if u in adj:
-            q.extend([v for v in adj[u] if v not in visited])
-    return out
+            num_paths = sum(dfs(v) for v in adj[u])
+            m[u] = num_paths
+            return num_paths
+        return 0
+
+    return dfs(src)
 
 
 routes = [
@@ -34,7 +37,6 @@ for route in routes:
     num_paths: int = 1
     for i in range(len(route) - 1):
         src, dst = route[i], route[i + 1]
-        print(f"Finding routes from {src} to {dst} for route {'->'.join(route)}...")
         num_paths *= get_num_paths(src, dst, adj)
     out += num_paths
 
