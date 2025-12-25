@@ -1,6 +1,8 @@
 # Advent of Code
 
-- 2021: mostly C++
-- 2022: chunky Jupyter notebook
-- 2023: ?
-- 2025: py
+| Year | Language | # Completed |
+| :--- | :--- | :--- |
+| 2021 | C++ | 19/25 |
+| 2022 | Jupyter Notebook | 12/25 |
+| 2023 | ? | ? |
+| 2025 | Python | 12/12 |
